@@ -32,6 +32,6 @@ STEPS INVOLVED:
 6. Run the web application locally (using http://localhost:8000/)
 
 TO RUN: 
-* >> source python_env/bin/activate
-* >> python3 manage.py runserver
+>> source python_env/bin/activate
+>> python3 manage.py runserver
 
