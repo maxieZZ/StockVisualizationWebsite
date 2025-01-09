@@ -3,6 +3,7 @@
 alphaVantage/SecretKey.py
 stockVisualizer/SecretAPI.py
 hidden_notes.txt
+*.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
