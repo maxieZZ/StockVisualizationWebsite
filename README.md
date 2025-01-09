@@ -33,5 +33,6 @@ STEPS INVOLVED:
 
 TO RUN: 
 >> source python_env/bin/activate
+
 >> python3 manage.py runserver
 
