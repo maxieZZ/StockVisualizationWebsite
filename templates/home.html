@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!--<link rel="stylesheet" href="style.css">-->
+    <!--(1) LOAD JAVASCRIPT DEPENDENCIES-->
+    <!--first link below is powerful chart.js lib for data viz-->
+    <!--second loads jquery lib to streamline frontend developer tasks-->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.2.1/dist/chart.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <title>Stock Visualizer</title>
+</head>
+
+<body>
+<h2>Interative Stock Visualizer</h2>
+<br>
+<!--(2) DEFINE PAGE LAYOUT-->
+<!--input text box for user to enter new ticker-->
+<label for="ticker-input">Enter Symbol:</label>
+<input type="text" id="ticker-input">
+<input type="button" value="submit" id="submit-btn"> <!--submit button-->
+<br>
+
+<div id="graph-area" style="height:80%; width:80%;">
+<canvas id="myChart"></canvas> <!--canvas where Chart.js generates graph-->
+</div>
+<br>
+
+<div>
+<!--put any notes you want to show up on webpage here!-->
+</div>
+<!--(3) DEFINE BEHAVOIR UPON PAGE LOADING-->
+<script>
+
+    $(document).ready(function(){ // specifies page behavoir when loaded
+      // Right after page is loaded, the 'get_stock_data' function (default to AAPL) from Django backend is requested by AJAX (ie Asynchronous JavaScript And XML) via POST for plotting
+      // AJAX is a javascript design pattern that (1) updates web pages without reloading, (2) requests data from backend server after loading, (3) receives data from backend server after loading
+        $.ajax({
+              type: "POST",
+              url: "/get_stock_data/",
+              data: {
+                 'ticker': 'FBTC', 
+              },
+              // Once FBTC (default) data is returned by backend to frontend (NOTE: data is stored in res variable in success function below), it's parsed by Javascript into 2 lists (dates & sma_data) and 1 variable (ie price = the current stock price)...
+              success: function (res, status) {
+                // FBTC's stock price and SMA data is contained in "res" object
+                var tickerDisplay = res['quote']['Global Quote']['01. symbol']; // get ticker symbol (FBTC)
+                var price = res['quote']['Global Quote']['05. price']; // get current price
+                var graphTitle = tickerDisplay + ' Current Price: ' + price + ' & Simple Moving Average (SMA) Data for 500 Trading Days' // make the graph title 
+
+                var dates = [];
+                var smaSeries = res['sma']['Technical Analysis: SMA']; // dictionary of prices & dates
+                var sma_data = [];
+
+                sma_data_parse = function(){ // loop through data to separate dates from prices
+                    for (let key in smaSeries) {
+                        dates.push(String(key));
+                        sma_data.push(Number(smaSeries[key]['SMA']));
+                    }
+
+                };
+                sma_data_parse();
+
+
+                // Lists are truncated into size=500 (ie data for trailing 500 trading days) to be visualized by Chart.js. NOTE: values in dates are used for the X axis while values in  sma_data are used for Y axis (current price is simply plotted as a straight line to compare)
+                sma_data.reverse().slice(500);
+                dates.reverse().slice(500);
+
+                //instruct Chart.js to plot graph, with "dates" as x-axis labels and "daily_adjusted_close" and "sma_data" as y-axis values...
+                var ctx = document.getElementById('myChart').getContext('2d'); 
+                
+                var myChart = new Chart(ctx, {
+                  type: 'line',
+                  data: {
+                    labels: dates.slice(-500),
+                    datasets: [ { label: 'Current Price',
+                                  data: Array(500).fill(price), // replicate price to plot as green line
+                                  backgroundColor: ['green',], 
+                                  borderColor: ['green',],
+                                  borderWidth: 1 },
+                    
+                                { label: 'Simple Moving Average (SMA)',
+                                  data: sma_data.slice(-500), // plot moving averages in blue
+                                  backgroundColor: ['blue',], 
+                                  borderColor: ['blue',],
+                                  borderWidth: 1 },
+                              ]
+                  }, // data close bracket
+                  options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                //beginAtZero: false
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                            position: 'top',
+                            },
+                            title: {
+                            display: true,
+                            text: graphTitle
+                            }
+                        }
+                  } // options close bracket
+                
+                }); // chart close bracket
+
+              } // sucess close bracket
+        }); // ajax close bracket
+    }); // document close bracket
+    
+// (4) DEFINE BEHAVOIR WHEN A NEW TICKER IS SUBMITTED BY USER...
+    $('#submit-btn').click(function() { // specifies page behavior when user enters new ticker symbol
+      // when user specifies ticker, Django backend ('get_stock_data' function) is called to get stock data and refresh graph
+      var tickerText = $('#ticker-input').val(); // obtain ticker string from input textbox
+        $.ajax({
+              type: "POST",
+              url: "/get_stock_data/",
+              data: {
+                 'ticker': tickerText, // use ticker that user has entered
+              },
+              success: function (res, status) {
+                
+                // MAKE SURE THAT THE TICKER SYMBOL EXISTS AND CONTAINS EXTRACTED DATA
+                if (Object.keys(res['quote']['Global Quote']).length === 0 || Object.keys(res['sma']).length === 0) { // if output is empty...
+                  alert("The Ticker Symbol You Entered Does Not Exist! Please Try Again")
+                }
+                // Otherwise, data was extracted from ticker querry so proceed as before...
+                else {
+                  // stock price and SMA data for the user-specified ticker is now in the "res" object (SAME AS BEFORE!!!)
+                  var tickerDisplay = res['quote']['Global Quote']['01. symbol']; // get symbol
+                  var price = res['quote']['Global Quote']['05. price']; // get current price
+                  var graphTitle = tickerDisplay + ' Current Price: ' + price + ' & Simple Moving Average (SMA) Data for 500 Trading Days'
+                  var dates = [];
+                  var smaSeries = res['sma']['Technical Analysis: SMA'];
+                  var sma_data = [];
+
+                  sma_data_parse = function(){ // loop through sma data to seperate prices from dates
+                      for (let key in smaSeries) {
+                          dates.push(String(key));
+                          sma_data.push(Number(smaSeries[key]['SMA']));
+                      }
+
+                  };
+                  sma_data_parse();
+
+
+                  // only keep latest 500 data points (ie data for latest 500 trading days)... 
+                  sma_data.reverse().slice(500);
+                  dates.reverse().slice(500);
+
+                //instruct Chart.js to plot graph with "dates" as x-axis labels and "sma_data" as y-axis
+                  $('#myChart').remove(); // this is my <canvas> element
+                  $('#graph-area').append('<canvas id="myChart"><canvas>');
+                  var ctx = document.getElementById('myChart').getContext('2d');
+                  
+                  var myChart = new Chart(ctx, {
+                    type: 'line',
+                      data: {
+                          labels: dates.slice(-500), // dates on x axis
+                          datasets: [ { label: 'Current Price',
+                                        data: Array(500).fill(price), // price as green line
+                                        backgroundColor: ['green',],
+                                        borderColor: ['green',],
+                                        borderWidth: 1 
+                                      },
+                                      { label: 'Simple Moving Average (SMA)',
+                                        data: sma_data.slice(-500), // sma as blue line
+                                        backgroundColor: ['blue',],
+                                        borderColor: ['blue',],
+                                        borderWidth: 1 
+                                      },
+                                    ]
+                      }, // end of data
+                    
+                      options: {
+                          responsive: true,
+                          scales: {
+                            y:  { //beginAtZero: false
+                                }
+                          },
+                          plugins: {
+                            legend: { position: 'top', },
+                            title: 
+                            {
+                              display: true,
+                              text: graphTitle
+                            }
+                          }
+                      } // options close bracket
+                  }); // chart close bracket
+                } // else statement close bracket
+              } // success function close bracket
+        }); // ajax close bracket
+    }); // submit button close bracket
+
+</script>
+
+</body>
+</html>
