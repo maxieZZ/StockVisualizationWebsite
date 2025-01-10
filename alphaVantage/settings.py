@@ -21,14 +21,18 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
+# NOTE: The Dockerfile modifications in code allow you to change settings depending on the environment you are working in!!!
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = SECRET_KEY_PHRASE
+# SECRET_KEY = os.environ.get("SECRET_KEY") # FOR DOCKERFILE
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+# DEBUG = bool(os.environ.get("DEBUG", default=0)) # FOR DOCKERFILE
 
 ALLOWED_HOSTS = []
-
+# ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS","127.0.0.1").split(",") # FOR DOCKERFILE
 
 # Application definition
 
